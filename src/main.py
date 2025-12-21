@@ -1,37 +1,34 @@
 # pyright: reportOptionalSubscript=false
 from PIL import Image
-from math import sqrt
+from math import sqrt, pi, inf
 
+from interval import Interval
 from vec3 import Vec3, unit_vector, dot
 from ray import Ray
 from color import write_color
+from sphere import Sphere
+from hittable_list import HittableList
+from hittable import Hittable
 
 print("Raytracing")
 
-# returns true if ray hit sphere
-def hit_sphere(center:Vec3, radius:float, r:Ray):
-    origin_to_center = center - r.origin
-    a = r.direction.length_squared()
-    h = dot(r.direction, origin_to_center)
-    c = origin_to_center.length_squared() - (radius * radius)
+color = Vec3
+Point3 = Vec3
 
-    discrimant = h*h - (a*c)
-    if discrimant < 0:
-        return -1.0
-    else:
-        return (h-(sqrt(discrimant)/a))
+# Utility Functions
+def degrees_to_radians(degree:float):
+    return degree * pi / 180
 
-# Returns color of ray
-def ray_color(r:Ray):
+def ray_color(r:Ray, world:Hittable):
+
+    hit, rec = (world.hit(r, Interval(0.0, inf)))
+    if hit and rec is not None:
+        return 0.5 * (rec.normal + color(1, 1, 1))
     
-    t = hit_sphere(Vec3(0, 0, -1), 0.5, r)
-    if t > 0.0:
-        normal = unit_vector(r.at(t) - Vec3(0, 0, -1))
-        return 0.5 * (normal + Vec3(1,1,1))
-
     unit_direction:Vec3 = unit_vector(r.direction)
-    a = 0.5 * (unit_direction.y + 1)
-    return (1.0-a)*Vec3(1.0, 1.0, 1.0) + a*Vec3(0.5, 0.7, 1.0)
+    a = 0.5 * (unit_direction.y + 1.0)
+    return (1.0-a)*color(1.0, 1.0, 1.0) + a*color(0.5, 0.7, 1.0)
+
 
 def main():
     
@@ -40,6 +37,11 @@ def main():
 
     image_height = int(image_width / aspect_ratio)
     image_height = image_height if image_height > 1 else 1
+
+    world = HittableList()
+
+    world.add(Sphere(Point3(0, 0, 1), 0.5))
+    world.add(Sphere(Point3(0, 100.5, 1), 100))
 
     focal_length = 1.0
     viewport_height = 2.0
@@ -66,7 +68,7 @@ def main():
 
             #pixel = Vec3(float(i)/(image_width-1), float(j)/(image_height-1), 0)
             r = Ray(camera_center, ray_direction)
-            r, g, b = write_color(ray_color(r))
+            r, g, b = write_color(ray_color(r, world))
             pixels[i,j] = (r, g, b)
     
     im.show()

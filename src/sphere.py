@@ -3,6 +3,7 @@ from math import sqrt
 from hittable import HitRecord, Hittable
 from ray import Ray
 from vec3 import Vec3, dot
+from interval import Interval
 
 Point3 = Vec3
 
@@ -13,8 +14,8 @@ class Sphere(Hittable):
         self.center = center
         self.radius = radius
     
-    def hit(self, r: Ray, t_min: float, t_max: float) -> tuple[bool, HitRecord | None]:
-        oc = self.center - r.origin
+    def hit(self, r: Ray, ray_t:Interval) -> tuple[bool, HitRecord | None]:
+        oc = r.origin - self.center
         a = r.direction.length_squared()
         h = dot(r.direction, oc)
         c = oc.length_squared() - (self.radius * self.radius)
@@ -27,12 +28,13 @@ class Sphere(Hittable):
 
         # Finding the nearest root in the required range
         root = (h - sqrtd) / a
-        if (root <= t_min or root >= t_max):
+        if (ray_t.surrounds(root)):
             root = (h + sqrtd) / a
-            if (root <= t_min or root >= t_max):
+            if (ray_t.surrounds(root)):
                 return (False, None)
         
-        record:HitRecord = HitRecord(root, r.at(root), (r.at(root) -  self.center)/ self.radius)
+        record:HitRecord = HitRecord(r.at(root), (r.at(root) - self.center) / self.radius, root, False)
+        record.set_face_normal(r, (record.p - self.center) / self.radius)
 
         return True, record
 
