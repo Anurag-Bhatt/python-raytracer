@@ -25,6 +25,7 @@ class Camera:
     def render(self, world:Hittable, pixels):
         self.initialize()
 
+        print("Starting Rendering...")
         print(f"Width:{self.image_width}, Height:{self.image_height}")
 
         for j in range(self.image_height):
@@ -36,11 +37,10 @@ class Camera:
 
                 pixel_color = self.ray_color(r, world)
                 pixels[i, j] = write_color(pixel_color)
+        
+        print("Done")
 
     def initialize(self):
-        self.image_height = int(self.image_width / self.aspect_ratio)
-        self.image_height = self.image_height if self.image_height > 1 else 1
-
         focal_length = 1.0
         viewport_height = 2.0
         viewport_width = viewport_height * (self.image_width / self.image_height)
@@ -56,8 +56,8 @@ class Camera:
 
 
     def ray_color(self, r:Ray, world:Hittable):
-        hit, rec = (world.hit(r, Interval(0.0, inf)))
-        if hit and rec is not None:
+        hit, rec = world.hit(r, Interval(0.001, inf))
+        if hit == True and rec is not None:
             return 0.5 * (rec.normal + color(1, 1, 1))
 
         unit_direction:Vec3 = unit_vector(r.direction)

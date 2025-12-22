@@ -15,7 +15,7 @@ class Sphere(Hittable):
         self.radius = radius
     
     def hit(self, r: Ray, ray_t:Interval) -> tuple[bool, HitRecord | None]:
-        oc = r.origin - self.center
+        oc = self.center - r.origin 
         a = r.direction.length_squared()
         h = dot(r.direction, oc)
         c = oc.length_squared() - (self.radius * self.radius)
@@ -28,9 +28,9 @@ class Sphere(Hittable):
 
         # Finding the nearest root in the required range
         root = (h - sqrtd) / a
-        if (ray_t.surrounds(root)):
+        if not (ray_t.surrounds(root)):
             root = (h + sqrtd) / a
-            if (ray_t.surrounds(root)):
+            if not (ray_t.surrounds(root)):
                 return (False, None)
         
         record:HitRecord = HitRecord(r.at(root), (r.at(root) - self.center) / self.radius, root, False)
