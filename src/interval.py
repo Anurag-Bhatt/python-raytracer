@@ -13,10 +13,10 @@ class Interval:
         return self.max - self.min
     
     def contains(self, x):
-        return min <= x and x <= max
+        return self.min <= x and x <= self.max
     
     def surrounds(self, x):
-        return min < x and x < max
+        return self.min < x and x < self.max
 
 Interval.empty = Interval(inf, -inf)
 Interval.universe = Interval(-inf, inf)

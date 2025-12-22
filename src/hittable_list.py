@@ -20,7 +20,7 @@ class HittableList(Hittable):
         closest_so_far:float = ray_t.max
 
         for obj in self.objects:
-            hit, temp_rec = obj.hit(r, ray_t.min, closest_so_far)
+            hit, temp_rec = obj.hit(r, Interval(ray_t.min, closest_so_far))
             if hit:
                 hit_anything = True
                 closest_so_far = temp_rec.t
