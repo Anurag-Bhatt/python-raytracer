@@ -10,15 +10,12 @@ from sphere import Sphere
 from hittable_list import HittableList
 from hittable import Hittable
 from camera import Camera
+import utility
 
 print("Raytracing")
 
 color = Vec3
 Point3 = Vec3
-
-# Utility Functions
-def degrees_to_radians(degree:float):
-    return degree * pi / 180
 
 def main():
     
@@ -27,7 +24,7 @@ def main():
     world.add(Sphere(Point3(0, 0, -1), 0.5))
     world.add(Sphere(Point3(0, -100.5, -1), 100))
     
-    cam = Camera(width=400, aspect_ratio=16.0/9.0)
+    cam = Camera(width=400, aspect_ratio=16.0/9.0, sample_per_pixel=10)
     cam.initialize()
 
     im = Image.new("RGB", (cam.image_width, cam.image_height))

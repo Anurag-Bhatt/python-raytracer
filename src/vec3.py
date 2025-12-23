@@ -1,4 +1,5 @@
 import math
+from utility import random_double, random_range
 
 class Vec3:
     def __init__(self, x, y, z):
@@ -34,6 +35,16 @@ class Vec3:
     def length(self):
         return math.sqrt(self.length_squared())
     
+    @staticmethod
+    def random_vec3():
+        return Vec3(random_double(), random_double(), random_double())
+    
+    @staticmethod
+    def random_vec3_range(min, max):
+        return Vec3(random_range(min, max), random_range(min, max), random_range(min, max))
+    
+   
+    
 
 def dot(u, v):
     return u.x * v.x +  u.y * v.y + u.z * v.z
@@ -47,3 +58,19 @@ def cross(u, v):
 
 def unit_vector(u):
     return u / u.length()
+
+def random_unit_vector():
+    while(True):
+        p = Vec3.random_vec3_range(-1, 1)
+        lensq = p.length_squared()
+        if 1e-160 < lensq and lensq <= 1:
+            return p/p.length()
+            
+# Creates a unit vector on a unit sphere and checks for the angle between the normal and itself
+def random_on_hemisphere(normal:Vec3):
+    on_unit_sphere = random_unit_vector()
+    if dot(on_unit_sphere, normal) > 0.0:
+        return on_unit_sphere
+    else:
+        return -on_unit_sphere
+        
