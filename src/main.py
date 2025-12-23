@@ -34,4 +34,6 @@ def main():
     
     im.show()
 
+    im.save("images/diffuse_sphere.png")
+
 main()
