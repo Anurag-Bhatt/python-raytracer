@@ -18,8 +18,8 @@ def main():
 
     material_ground  = material.Lambertian(color(0.8, 0.8, 0.0))
     material_center  = material.Lambertian(color(0.1, 0.2, 0.5))
-    material_left    = material.Metal(color(0.8, 0.8, 0.8))
-    material_right   = material.Metal(color(0.8, 0.6, 0.2))
+    material_left    = material.Dielectric(1.0 / 1.33)
+    material_right   = material.Metal(color(0.8, 0.6, 0.2), 1.0)
 
     world.add(Sphere(Point3(0, -100.5, -1), 100, material_ground))
     world.add(Sphere(Point3(0, 0, -1.2), 0.5, material_center))
