@@ -29,4 +29,3 @@ class Interval:
 
 Interval.empty = Interval(inf, -inf)
 Interval.universe = Interval(-inf, inf)
-

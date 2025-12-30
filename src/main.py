@@ -1,14 +1,9 @@
-# pyright: reportOptionalSubscript=false
 from PIL import Image
 from math import sqrt, pi, inf
 
-from interval import Interval
-from vec3 import Vec3, unit_vector, dot
-from ray import Ray
-from color import write_color
+from vec3 import Vec3
 from sphere import Sphere
 from hittable_list import HittableList
-from hittable import Hittable
 from camera import Camera
 import utility
 
@@ -37,3 +32,5 @@ def main():
     im.save("images/diffuse_sphere.png")
 
 main()
+
+# TODO : Working on the gamma correct - finding the right gamut

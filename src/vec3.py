@@ -73,4 +73,3 @@ def random_on_hemisphere(normal:Vec3):
         return on_unit_sphere
     else:
         return -on_unit_sphere
-        

@@ -27,6 +27,3 @@ class HittableList(Hittable):
                 final_rec = temp_rec
         
         return hit_anything, final_rec
-                
-
-

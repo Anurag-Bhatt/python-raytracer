@@ -1,5 +1,5 @@
 from hittable import Hittable
-from vec3 import Vec3, unit_vector, random_on_hemisphere
+from vec3 import Vec3, unit_vector, random_on_hemisphere, random_unit_vector
 from interval import Interval
 from utility import random_double
 from math import inf
@@ -69,8 +69,9 @@ class Camera:
 
         hit, rec = world.hit(r, Interval(0.001, inf))
         if hit == True and rec is not None:
-            direction = random_on_hemisphere(rec.normal)
-            return 0.5 * Camera.ray_color(Ray(rec.p, direction), depth-1, world)
+            #direction = random_on_hemisphere(rec.normal)
+            direction = rec.normal + random_unit_vector()
+            return 0.3 * Camera.ray_color(Ray(rec.p, direction), depth-1, world)
 
         unit_direction:Vec3 = unit_vector(r.direction)
         a = 0.5 * (unit_direction.y + 1.0)

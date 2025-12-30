@@ -37,4 +37,3 @@ class Sphere(Hittable):
         record.set_face_normal(r, (record.p - self.center) / self.radius)
 
         return True, record
-
