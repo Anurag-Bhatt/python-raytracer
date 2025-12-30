@@ -66,6 +66,7 @@ class Dielectric(Material):
         cos_theta = min(dot(-unit_direction, rec.normal), 1.0)
         sin_theta = sqrt(1 - cos_theta * cos_theta)
 
+        # According to Snell's law
         cannot_refract = ri * sin_theta > 1.0
         direction:Vec3 = Vec3(0, 0, 0)
         if cannot_refract:
