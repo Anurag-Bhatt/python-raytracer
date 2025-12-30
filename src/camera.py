@@ -70,8 +70,14 @@ class Camera:
         hit, rec = world.hit(r, Interval(0.001, inf))
         if hit == True and rec is not None:
             #direction = random_on_hemisphere(rec.normal)
-            direction = rec.normal + random_unit_vector()
-            return 0.3 * Camera.ray_color(Ray(rec.p, direction), depth-1, world)
+
+            did_scatter, attenuation, scattered = rec.material.scatter(r, rec)
+            if did_scatter:
+                c = attenuation * Camera.ray_color(scattered, depth-1, world)
+                #print(type(c.x), type(c))
+                return c
+
+            return color(0, 0, 0)
 
         unit_direction:Vec3 = unit_vector(r.direction)
         a = 0.5 * (unit_direction.y + 1.0)
