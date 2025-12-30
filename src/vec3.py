@@ -51,9 +51,6 @@ class Vec3:
     def random_vec3_range(min, max):
         return Vec3(random_range(min, max), random_range(min, max), random_range(min, max))
     
-   
-    
-
 def dot(u, v):
     return u.x * v.x +  u.y * v.y + u.z * v.z
 
@@ -85,3 +82,12 @@ def random_on_hemisphere(normal:Vec3):
 # Reflects the vector V using vector maths
 def reflect(v:Vec3, n:Vec3):
     return v - 2*dot(v,n)*n
+
+# Refraction for dielectric materials
+def refract(v:Vec3, n:Vec3, etai_over_etat):
+    
+    cos_theta = min(dot(-v, n), 1)
+    r_out_perp:Vec3 = etai_over_etat * (v + cos_theta * n)
+    r_out_para:Vec3 = -math.sqrt(abs(1.0 - r_out_perp.length_squared())) * n
+
+    return r_out_perp + r_out_para
