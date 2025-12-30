@@ -1,8 +1,8 @@
 from hittable import Hittable
-from vec3 import Vec3, unit_vector, random_on_hemisphere, random_unit_vector
+from vec3 import Vec3, unit_vector
 from interval import Interval
-from utility import random_double
-from math import inf
+from utility import random_double, degrees_to_radians
+from math import inf, tan
 from ray import Ray
 from color import write_color
 
@@ -23,6 +23,9 @@ class Camera:
         self.pixel00_loc = Vec3(0, 0, 0)
         self.pixel_delta_u = Vec3(0, 0, 0)
         self.pixel_delta_v = Vec3(0, 0, 0)
+
+        # In Degrees, vertical field of view
+        self.vfov = 90
 
         self.sample_per_pixel = sample_per_pixel
         self.pixel_samples_scale:float = 1 / sample_per_pixel
@@ -48,16 +51,23 @@ class Camera:
         print("Done")
 
     def initialize(self):
+
+        # Determine viewport dimensions
         focal_length = 1.0
-        viewport_height = 2.0
+        theta = degrees_to_radians(self.vfov)
+        h = tan(theta/2.0)
+        viewport_height = 2.0 * h * focal_length
         viewport_width = viewport_height * (self.image_width / self.image_height)
 
+        # Calculate the vectors across the horizontal and down the vertical viewport edges.
         viewport_u = Vec3(viewport_width, 0, 0)
         viewport_v = Vec3(0, -viewport_height, 0)
 
+        # Calculate the horizontal and vertical delta vectors from pixel to pixel
         self.pixel_delta_u = viewport_u / self.image_width
         self.pixel_delta_v = viewport_v / self.image_height
 
+        # Calculate the location of the upper left pixel
         viewport_upper_left = self.center - Vec3(0, 0, focal_length) - viewport_u/2 - viewport_v/2
         self.pixel00_loc = viewport_upper_left + 0.5 * (self.pixel_delta_u + self.pixel_delta_v)
 
