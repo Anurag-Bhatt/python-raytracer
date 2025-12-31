@@ -1,5 +1,5 @@
 from hittable import Hittable
-from vec3 import Vec3, unit_vector
+from vec3 import Vec3, unit_vector, cross
 from interval import Interval
 from utility import random_double, degrees_to_radians
 from math import inf, tan
@@ -18,14 +18,17 @@ class Camera:
         self.image_height = int(self.image_width / self.aspect_ratio)
         self.image_height = self.image_height if self.image_height > 1 else 1
         
+        # In Degrees, vertical field of view
+        self.vfov = 90
+        self.lookfrom:Point3    = Point3(0, 0, 0)       # Point Camera is looking from
+        self.lookat:Point3      = Point3(0, 0, -1)      # Point Camera is looking at
+        self.view_up:Vec3       = Vec3(0, 1, 0)         # Camera-relative up direction
+                
         self.max_depth = 10
         self.center = Vec3(0, 0, 0)
         self.pixel00_loc = Vec3(0, 0, 0)
         self.pixel_delta_u = Vec3(0, 0, 0)
         self.pixel_delta_v = Vec3(0, 0, 0)
-
-        # In Degrees, vertical field of view
-        self.vfov = 90
 
         self.sample_per_pixel = sample_per_pixel
         self.pixel_samples_scale:float = 1 / sample_per_pixel
@@ -45,30 +48,36 @@ class Camera:
                     r:Ray = self.get_ray(i, j)
                     pixel_color += self.ray_color(r, self.max_depth, world)
 
-
                 pixels[i, j] = write_color(pixel_color * self.pixel_samples_scale)
         
         print("Done")
 
     def initialize(self):
 
+        self.center = self.lookfrom
+
         # Determine viewport dimensions
-        focal_length = 1.0
+        focal_length = (self.lookfrom - self.lookat).length()
         theta = degrees_to_radians(self.vfov)
         h = tan(theta/2.0)
         viewport_height = 2.0 * h * focal_length
         viewport_width = viewport_height * (self.image_width / self.image_height)
 
+        # Calculate the u,v,w unit basis vectors for the camera coordinate frame
+        w = unit_vector(self.lookfrom - self.lookat)
+        u = unit_vector(cross(self.view_up, w))
+        v = cross(w, u)
+
         # Calculate the vectors across the horizontal and down the vertical viewport edges.
-        viewport_u = Vec3(viewport_width, 0, 0)
-        viewport_v = Vec3(0, -viewport_height, 0)
+        viewport_u = viewport_width * u
+        viewport_v = viewport_height * -v
 
         # Calculate the horizontal and vertical delta vectors from pixel to pixel
         self.pixel_delta_u = viewport_u / self.image_width
         self.pixel_delta_v = viewport_v / self.image_height
 
         # Calculate the location of the upper left pixel
-        viewport_upper_left = self.center - Vec3(0, 0, focal_length) - viewport_u/2 - viewport_v/2
+        viewport_upper_left = self.center - (focal_length * w) - viewport_u/2 - viewport_v/2
         self.pixel00_loc = viewport_upper_left + 0.5 * (self.pixel_delta_u + self.pixel_delta_v)
 
     @staticmethod
