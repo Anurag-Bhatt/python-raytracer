@@ -78,7 +78,14 @@ def random_on_hemisphere(normal:Vec3):
         return on_unit_sphere
     else:
         return -on_unit_sphere
-    
+
+# Finds a random point on the a disk of unit radius
+def random_in_unit_disk():
+    while True:
+        p = Vec3(random_range(-1, 1), random_range(-1, 1), 0)
+        if p.length_squared() < 1:
+            return p
+
 # Reflects the vector V using vector maths
 def reflect(v:Vec3, n:Vec3):
     return v - 2*dot(v,n)*n
