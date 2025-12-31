@@ -1,5 +1,5 @@
 from hittable import Hittable
-from vec3 import Vec3, unit_vector, cross
+from vec3 import Vec3, unit_vector, cross, random_in_unit_disk
 from interval import Interval
 from utility import random_double, degrees_to_radians
 from math import inf, tan
@@ -30,6 +30,12 @@ class Camera:
         self.pixel_delta_u = Vec3(0, 0, 0)
         self.pixel_delta_v = Vec3(0, 0, 0)
 
+        self.defocus_angle = 0.0  # Variation angle of rays through each pixel
+        self.focus_dist = 10.0    # Distance from camera lookfrom point to plane of perfect focus
+
+        self.defocus_disk_u = Vec3(0,0,0)
+        self.defocus_disk_v = Vec3(0,0,0)
+
         self.sample_per_pixel = sample_per_pixel
         self.pixel_samples_scale:float = 1 / sample_per_pixel
 
@@ -57,10 +63,10 @@ class Camera:
         self.center = self.lookfrom
 
         # Determine viewport dimensions
-        focal_length = (self.lookfrom - self.lookat).length()
+        #focal_length = (self.lookfrom - self.lookat).length()
         theta = degrees_to_radians(self.vfov)
         h = tan(theta/2.0)
-        viewport_height = 2.0 * h * focal_length
+        viewport_height = 2.0 * h * self.focus_dist
         viewport_width = viewport_height * (self.image_width / self.image_height)
 
         # Calculate the u,v,w unit basis vectors for the camera coordinate frame
@@ -77,8 +83,12 @@ class Camera:
         self.pixel_delta_v = viewport_v / self.image_height
 
         # Calculate the location of the upper left pixel
-        viewport_upper_left = self.center - (focal_length * w) - viewport_u/2 - viewport_v/2
+        viewport_upper_left = self.center - (self.focus_dist * w) - viewport_u/2 - viewport_v/2
         self.pixel00_loc = viewport_upper_left + 0.5 * (self.pixel_delta_u + self.pixel_delta_v)
+
+        defocus_radius = self.focus_dist * tan(degrees_to_radians(self.defocus_angle / 2))
+        self.defocus_disk_u = u * defocus_radius
+        self.defocus_disk_v = v * defocus_radius
 
     @staticmethod
     def ray_color(r:Ray, depth:int, world:Hittable):
@@ -107,7 +117,7 @@ class Camera:
         offset = self.sample_square()
         pixel_sample = self.pixel00_loc + ((i + offset.x) * self.pixel_delta_u) + ((j + offset.y) * self.pixel_delta_v)
 
-        ray_origin = self.center
+        ray_origin = self.center if (self.defocus_angle <= 0) else self.defocus_disk_sample()
         ray_direction = pixel_sample - ray_origin
 
         return Ray(ray_origin, ray_direction)
@@ -115,3 +125,7 @@ class Camera:
     @staticmethod
     def sample_square():
         return Vec3(random_double() - 0.5, random_double() - 0.5, 0)
+    
+    def defocus_disk_sample(self):
+        p = random_in_unit_disk()
+        return self.center + (p.x * self.defocus_disk_u) + (p.y * self.defocus_disk_v)
