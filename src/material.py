@@ -53,7 +53,7 @@ class Metal(Material):
 
 class Dielectric(Material):
 
-    def __init__(self, refraction_index) -> None:
+    def __init__(self, refraction_index:float) -> None:
         self.refraction_index = refraction_index
     
     def scatter(self, ray_in: Ray, rec: HitRecord) -> tuple[bool, Vec3, Ray]:
