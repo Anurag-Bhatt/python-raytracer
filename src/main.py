@@ -1,5 +1,4 @@
 from PIL import Image
-from math import sqrt, pi, inf, cos
 
 from vec3 import Vec3, random_double, random_range
 from sphere import Sphere
