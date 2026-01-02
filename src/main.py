@@ -1,3 +1,4 @@
+import cProfile, pstats, re
 from PIL import Image
 
 from vec3 import Vec3, random_double, random_range
@@ -73,6 +74,20 @@ def main():
     
     im.show()
 
-    im.save("images/final_render.png")
+    im.save("images/final_render-profiling.png")
 
 main()
+
+if __name__ == '__main__':
+    
+    profiler = cProfile.Profile()
+    profiler.enable()
+
+    main()
+
+    profiler.disable()
+
+    stats = pstats.Stats(profiler)
+    stats.strip_dirs()
+    stats.sort_stats(pstats.SortKey.CUMULATIVE)
+    stats.dump_stats("data.prof")
