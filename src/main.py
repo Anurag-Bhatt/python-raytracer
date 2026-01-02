@@ -76,8 +76,6 @@ def main():
 
     im.save("images/final_render-profiling.png")
 
-main()
-
 if __name__ == '__main__':
     
     profiler = cProfile.Profile()
