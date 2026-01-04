@@ -1,13 +1,12 @@
+import numpy as np
 from hittable import Hittable
-from vec3 import Vec3, unit_vector, cross, random_in_unit_disk
 from interval import Interval
-from utility import random_double, degrees_to_radians
+from utility import random_double, degrees_to_radians, random_range, normalise, cross, random_in_unit_disk
 from math import inf, tan
 from ray import Ray
 from color import write_color
 
-Point3 = Vec3
-color = Vec3
+
 
 class Camera:
 
@@ -20,21 +19,21 @@ class Camera:
         
         # In Degrees, vertical field of view
         self.vfov = 90
-        self.lookfrom:Point3    = Point3(0, 0, 0)       # Point Camera is looking from
-        self.lookat:Point3      = Point3(0, 0, -1)      # Point Camera is looking at
-        self.view_up:Vec3       = Vec3(0, 1, 0)         # Camera-relative up direction
+        self.lookfrom       =   np.array([0.0, 0.0, 0.0], dtype=np.float32)       # Point Camera is looking from
+        self.lookat         =   np.array([0.0, 0.0, -1.0], dtype=np.float32)      # Point Camera is looking at
+        self.view_up        =   np.array([0.0, 1.0, 0.0], dtype=np.float32)         # Camera-relative up direction
                 
-        self.max_depth = 10
-        self.center = Vec3(0, 0, 0)
-        self.pixel00_loc = Vec3(0, 0, 0)
-        self.pixel_delta_u = Vec3(0, 0, 0)
-        self.pixel_delta_v = Vec3(0, 0, 0)
+        self.max_depth      = 10
+        self.center         = np.zeros(3, dtype=np.float32)
+        self.pixel00_loc    = np.zeros(3, dtype=np.float32)
+        self.pixel_delta_u  = np.zeros(3, dtype=np.float32)
+        self.pixel_delta_v  = np.zeros(3, dtype=np.float32)
 
-        self.defocus_angle = 0.0  # Variation angle of rays through each pixel
-        self.focus_dist = 10.0    # Distance from camera lookfrom point to plane of perfect focus
+        self.defocus_angle  = 0.0  # Variation angle of rays through each pixel
+        self.focus_dist     = 10.0    # Distance from camera lookfrom point to plane of perfect focus
 
-        self.defocus_disk_u = Vec3(0,0,0)
-        self.defocus_disk_v = Vec3(0,0,0)
+        self.defocus_disk_u = np.zeros(3, dtype=np.float32)
+        self.defocus_disk_v = np.zeros(3, dtype=np.float32)
 
         self.sample_per_pixel = sample_per_pixel
         self.pixel_samples_scale:float = 1 / sample_per_pixel
@@ -48,7 +47,7 @@ class Camera:
         for j in range(self.image_height):
             for i in range(self.image_width):
 
-                pixel_color:color = color(0,0,0)
+                pixel_color = np.zeros(3, dtype=np.float32)
                 
                 for sample in range(self.sample_per_pixel):
                     r:Ray = self.get_ray(i, j)
@@ -70,8 +69,8 @@ class Camera:
         viewport_width = viewport_height * (self.image_width / self.image_height)
 
         # Calculate the u,v,w unit basis vectors for the camera coordinate frame
-        w = unit_vector(self.lookfrom - self.lookat)
-        u = unit_vector(cross(self.view_up, w))
+        w = normalise(self.lookfrom - self.lookat)
+        u = normalise(cross(self.view_up, w))
         v = cross(w, u)
 
         # Calculate the vectors across the horizontal and down the vertical viewport edges.
@@ -91,10 +90,10 @@ class Camera:
         self.defocus_disk_v = v * defocus_radius
 
     @staticmethod
-    def ray_color(r:Ray, depth:int, world:Hittable):
+    def ray_color(r:Ray, depth:int, world:Hittable) -> np.ndarray:
 
         if depth <= 0:
-            return color(0, 0, 0)
+            return np.zeros(3, dtype=np.float32)
 
         hit, rec = world.hit(r, Interval(0.001, inf))
         if hit == True and rec is not None:
@@ -106,16 +105,16 @@ class Camera:
                 #print(type(c.x), type(c))
                 return c
 
-            return color(0, 0, 0)
+            return np.zeros(3, dtype=np.float32)
 
-        unit_direction:Vec3 = unit_vector(r.direction)
-        a = 0.5 * (unit_direction.y + 1.0)
-        return (1.0-a)*color(1.0, 1.0, 1.0) + a*color(0.5, 0.7, 1.0)
+        unit_direction = normalise(r.direction)
+        a = 0.5 * (unit_direction[1] + 1.0)
+        return (1.0-a)*np.array([1.0, 1.0, 1.0], dtype=np.float32) + a*np.array([0.5, 0.7, 1.0], dtype=np.float32)
     
     def get_ray(self, i:int, j:int):
         
         offset = self.sample_square()
-        pixel_sample = self.pixel00_loc + ((i + offset.x) * self.pixel_delta_u) + ((j + offset.y) * self.pixel_delta_v)
+        pixel_sample = self.pixel00_loc + ((i + offset[0]) * self.pixel_delta_u) + ((j + offset[1]) * self.pixel_delta_v)
 
         ray_origin = self.center if (self.defocus_angle <= 0) else self.defocus_disk_sample()
         ray_direction = pixel_sample - ray_origin
@@ -124,8 +123,8 @@ class Camera:
 
     @staticmethod
     def sample_square():
-        return Vec3(random_double() - 0.5, random_double() - 0.5, 0)
+        return np.array([random_double() - 0.5, random_double() - 0.5, 0], dtype=np.float32)
     
     def defocus_disk_sample(self):
         p = random_in_unit_disk()
-        return self.center + (p.x * self.defocus_disk_u) + (p.y * self.defocus_disk_v)
+        return self.center + (p[0] * self.defocus_disk_u) + (p[1] * self.defocus_disk_v)
