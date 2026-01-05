@@ -144,21 +144,6 @@ class Camera:
 
         return final_color
 
-
-    def get_ray(self, i:int, j:int):
-
-        widht = self.image_width
-        
-        # How to convert this into row matrix?
-
-        offset = self.sample_square()
-        pixel_sample = self.pixel00_loc + ((i + offset[0]) * self.pixel_delta_u) + ((j + offset[1]) * self.pixel_delta_v)
-
-        ray_origin = self.center if (self.defocus_angle <= 0) else self.defocus_disk_sample()
-        ray_direction = pixel_sample - ray_origin
-
-        return Ray(ray_origin, ray_direction)
-
     @staticmethod
     def sample_square():
         return np.array([random_double() - 0.5, random_double() - 0.5, 0], dtype=np.float32)
