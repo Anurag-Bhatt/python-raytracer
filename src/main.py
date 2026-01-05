@@ -20,8 +20,8 @@ def main():
     for a in range(-11, 11):
         for b in range(-11, 11):
 
-            choose_mat = random_double()
-            center = np.array([a + 0.9*random_double(), 0.2, b + 0.9*random_double()], dtype=np.float32)
+            choose_mat = np.random.uniform()
+            center = np.array([a + 0.9*np.random.uniform(), 0.2, b + 0.9*np.random.uniform()], dtype=np.float32)
 
             if (np.linalg.norm(center - np.array([4.0, 0.2, 0.0], dtype=np.float32)) > 0.9):
                 sphere_material:material.Material
@@ -35,7 +35,7 @@ def main():
                 elif choose_mat < 0.95:
                     # Metal
                     albedo = random_vec3_range(0.5, 1)
-                    fuzz = random_range(0, 0.5)
+                    fuzz = np.random.uniform(0, 0.5)
                     sphere_material = material.Metal(albedo, fuzz)
                     world.add(Sphere(center, 0.2, sphere_material))
                 else:
@@ -53,7 +53,7 @@ def main():
     material_3 = material.Metal(np.array([0.7, 0.6, 0.5], dtype=np.float32), 0.0)
     world.add(Sphere(np.array([4, 1, 0], dtype=np.float32), 1.0, material_3))
 
-    cam = Camera(width=400, aspect_ratio=16.0/9.0, sample_per_pixel=50)
+    cam = Camera(width=400, aspect_ratio=16.0/9.0, sample_per_pixel=10)
 
     cam.vfov = 20
     cam.lookfrom = np.array([13, 2, 1], dtype=np.float32)
@@ -68,10 +68,12 @@ def main():
     im = Image.new("RGB", (cam.image_width, cam.image_height))
     pixels= im.load()
     
-    cam.render(world, pixels)
+    colors = cam.render(world, pixels)
     
+    im = Image.fromarray(colors)
+
     im.show()
 
-    im.save("images/test_render_2.png")
+    im.save("images/test_render_3.png")
 
 main()
