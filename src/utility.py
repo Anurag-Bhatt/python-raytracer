@@ -1,10 +1,9 @@
-from math import pi
 import random
 import numpy as np
 
 # Utility Functions
 def degrees_to_radians(degree:float):
-    return degree * pi / 180
+    return degree * np.pi / 180
 
 def random_double() -> float:
     return random.random()
@@ -59,3 +58,15 @@ def random_vec3():
 
 def random_vec3_range(min, max):
         return np.array([random_range(min, max), random_range(min, max), random_range(min, max)], dtype=np.float32)
+
+def random_unit_vector_batch(n):
+  
+    z = np.random.uniform(-1, 1, n)
+    phi = np.random.uniform(0, 2 * np.pi, n)
+    
+    # Convert to Cartesian
+    r = np.sqrt(np.maximum(0, 1 - z**2))
+    x = r * np.cos(phi)
+    y = r * np.sin(phi)
+    
+    return np.stack([x, y, z], axis=-1)
