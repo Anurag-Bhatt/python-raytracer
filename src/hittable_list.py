@@ -1,8 +1,5 @@
 import numpy as np
-from hittable import HitRecord, Hittable
-
-from ray import Ray
-from interval import Interval
+from hittable import  Hittable
 
 class HittableList(Hittable):
 

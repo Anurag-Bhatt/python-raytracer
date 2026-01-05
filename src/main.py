@@ -2,7 +2,7 @@ from PIL import Image
 
 import numpy as np
 
-from utility import random_double, random_vec3, random_vec3_range, random_range
+from utility import random_vec3, random_vec3_range
 from sphere import Sphere
 from hittable_list import HittableList
 from camera import Camera
@@ -17,8 +17,8 @@ def main():
     ground_material = material.Lambertian(np.array([0.5, 0.5, 0.5], dtype=np.float32))
     world.add(Sphere(np.array([0, -1000, 0], dtype=np.float32), 1000, ground_material))
 
-    for a in range(-11, 11):
-        for b in range(-11, 11):
+    for a in range(-1, 1):
+        for b in range(-1, 1):
 
             choose_mat = np.random.uniform()
             center = np.array([a + 0.9*np.random.uniform(), 0.2, b + 0.9*np.random.uniform()], dtype=np.float32)
@@ -74,6 +74,6 @@ def main():
 
     im.show()
 
-    im.save("images/test_render_3.png")
+    im.save("images/test_render_4.png")
 
 main()

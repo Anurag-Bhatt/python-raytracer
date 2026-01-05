@@ -1,12 +1,7 @@
 import numpy as np
 from hittable import Hittable
-from interval import Interval
-from utility import random_double, degrees_to_radians, random_range, normalise, cross
-from math import inf, tan
+from utility import random_double, degrees_to_radians, normalise, cross
 from ray import Ray
-from color import write_color
-
-
 
 class Camera:
 
@@ -82,7 +77,7 @@ class Camera:
         # Determine viewport dimensions
         #focal_length = (self.lookfrom - self.lookat).length()
         theta = degrees_to_radians(self.vfov)
-        h = tan(theta/2.0)
+        h = np.tan(theta/2.0)
         viewport_height = 2.0 * h * self.focus_dist
         viewport_width = viewport_height * (self.image_width / self.image_height)
 
@@ -103,7 +98,7 @@ class Camera:
         viewport_upper_left = self.center - (self.focus_dist * w) - viewport_u/2 - viewport_v/2
         self.pixel00_loc = viewport_upper_left + 0.5 * (self.pixel_delta_u + self.pixel_delta_v)
 
-        defocus_radius = self.focus_dist * tan(degrees_to_radians(self.defocus_angle / 2))
+        defocus_radius = self.focus_dist * np.tan(degrees_to_radians(self.defocus_angle / 2))
         self.defocus_disk_u = u * defocus_radius
         self.defocus_disk_v = v * defocus_radius
 
@@ -166,4 +161,3 @@ def random_unit_disk_vectorized(shape):
     z = np.zeros_like(x)
 
     return np.stack([x, y, z], axis=-1)
-
