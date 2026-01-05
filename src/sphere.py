@@ -1,12 +1,9 @@
 from __future__ import annotations
 
 import numpy as np
+
 from hittable import Hittable
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from material import Material
-
+from material import Material
 
 class Sphere(Hittable):
 
