@@ -1,10 +1,7 @@
 from __future__ import annotations
-from interval import Interval
 
 import numpy as np
-
-from hittable import HitRecord, Hittable
-from ray import Ray
+from hittable import Hittable
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -19,29 +16,36 @@ class Sphere(Hittable):
         self.radius = radius
         self.mat = mat
     
-    def hit(self, r: Ray, ray_t:Interval) -> tuple[bool, HitRecord | None]:
+    def hit(self, rays, t_min:float, t_max:float):
         
-        oc = self.center - r.origin 
-        a = np.dot(r.direction, r.direction)
-        h = np.dot(r.direction, oc)
-        c = np.dot(oc, oc) - (self.radius**2)
+        oc = rays.origin - self.center
 
-        discriminant = h*h - (a*c)
-        if discriminant < 0:
-            return (False, None)
+        a = np.sum(rays.direction**2, axis=-1)
+        h = np.sum(oc*rays.direction, axis=-1)
+        c = np.sum(oc*oc, axis=-1) - (self.radius**2)
+
+        discriminant = h**2 - a*c
+
+        hit_mask = discriminant > 0
+        sqrt_d = np.sqrt(np.maximum(0, discriminant))
+
+        root = (-h - sqrt_d)/a
+        hit_mask = hit_mask & (root > t_min) & (root < t_max)
+        t_values = np.where(hit_mask, root, np.inf)
+
+        obj_ids = np.where(hit_mask, 0, -1)
         
-        sqrtd = np.sqrt(discriminant)
+        return hit_mask, t_values, obj_ids
+    
+    def get_record(self, rays, t_values, hitmask):
 
-        # Finding the nearest root in the required range
-        root = (h - sqrtd) / a
-        if not (ray_t.surrounds(root)):
-            root = (h + sqrtd) / a
-            if not (ray_t.surrounds(root)):
-                return (False, None)
-        
-        hit_point = r.at(root)
-        outward_normal = (hit_point - self.center) / self.radius
-        record:HitRecord = HitRecord(hit_point, outward_normal, root, False, self.mat)
-        record.set_face_normal(r, outward_normal)
+        points = rays.origin[hitmask] + t_values[hitmask, np.newaxis] * rays.direction[hitmask]
 
-        return True, record
+        outward_normals = (points - self.center) / self.radius
+
+        direction = rays.direction[hitmask]
+        front_faces = np.sum(direction * outward_normals, axis=1) < 0
+
+        normals = np.where(front_faces[..., np.newaxis], outward_normals, -outward_normals)
+
+        return points, normals, front_faces 
