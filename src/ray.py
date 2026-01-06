@@ -1,11 +1,11 @@
-from vec3 import Vec3
+import numpy as np
 
 class Ray:
 
-    def __init__(self, origin:Vec3, direction:Vec3) -> None:
+    def __init__(self, origin:np.ndarray, direction:np.ndarray) -> None:
         
         self.origin = origin
         self.direction = direction
     
-    def at(self, t):
+    def at(self, t:float) -> np.ndarray:
         return  self.origin + t * self.direction

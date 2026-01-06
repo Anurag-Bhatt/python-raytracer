@@ -1,13 +1,7 @@
+import numpy as np
 from hittable import Hittable
-from vec3 import Vec3, unit_vector, cross, random_in_unit_disk
-from interval import Interval
-from utility import random_double, degrees_to_radians
-from math import inf, tan
+from utility import random_double, degrees_to_radians, normalise, cross
 from ray import Ray
-from color import write_color
-
-Point3 = Vec3
-color = Vec3
 
 class Camera:
 
@@ -20,21 +14,21 @@ class Camera:
         
         # In Degrees, vertical field of view
         self.vfov = 90
-        self.lookfrom:Point3    = Point3(0, 0, 0)       # Point Camera is looking from
-        self.lookat:Point3      = Point3(0, 0, -1)      # Point Camera is looking at
-        self.view_up:Vec3       = Vec3(0, 1, 0)         # Camera-relative up direction
+        self.lookfrom       =   np.array([0.0, 0.0, 0.0], dtype=np.float32)       # Point Camera is looking from
+        self.lookat         =   np.array([0.0, 0.0, -1.0], dtype=np.float32)      # Point Camera is looking at
+        self.view_up        =   np.array([0.0, 1.0, 0.0], dtype=np.float32)         # Camera-relative up direction
                 
-        self.max_depth = 10
-        self.center = Vec3(0, 0, 0)
-        self.pixel00_loc = Vec3(0, 0, 0)
-        self.pixel_delta_u = Vec3(0, 0, 0)
-        self.pixel_delta_v = Vec3(0, 0, 0)
+        self.max_depth      = 10
+        self.center         = np.zeros(3, dtype=np.float32)
+        self.pixel00_loc    = np.zeros(3, dtype=np.float32)
+        self.pixel_delta_u  = np.zeros(3, dtype=np.float32)
+        self.pixel_delta_v  = np.zeros(3, dtype=np.float32)
 
-        self.defocus_angle = 0.0  # Variation angle of rays through each pixel
-        self.focus_dist = 10.0    # Distance from camera lookfrom point to plane of perfect focus
+        self.defocus_angle  = 0.0  # Variation angle of rays through each pixel
+        self.focus_dist     = 10.0    # Distance from camera lookfrom point to plane of perfect focus
 
-        self.defocus_disk_u = Vec3(0,0,0)
-        self.defocus_disk_v = Vec3(0,0,0)
+        self.defocus_disk_u = np.zeros(3, dtype=np.float32)
+        self.defocus_disk_v = np.zeros(3, dtype=np.float32)
 
         self.sample_per_pixel = sample_per_pixel
         self.pixel_samples_scale:float = 1 / sample_per_pixel
@@ -45,18 +39,36 @@ class Camera:
         print("Starting Rendering...")
         print(f"Width:{self.image_width}, Height:{self.image_height}")
 
-        for j in range(self.image_height):
-            for i in range(self.image_width):
+        accumulated_colors = np.zeros((self.image_height, self.image_width, 3), dtype=np.float32)
 
-                pixel_color:color = color(0,0,0)
-                
-                for sample in range(self.sample_per_pixel):
-                    r:Ray = self.get_ray(i, j)
-                    pixel_color += self.ray_color(r, self.max_depth, world)
+        j, i = np.meshgrid(np.arange(self.image_height), np.arange(self.image_width), indexing="ij")
+        for s in range(self.sample_per_pixel):    
+            offsets = np.random.uniform(-0.5, 0.5, (self.image_height, self.image_width, 2))
 
-                pixels[i, j] = write_color(pixel_color * self.pixel_samples_scale)
+            pixel_sample = (
+                self.pixel00_loc + 
+                (i[..., None] + offsets[..., 0:1]) * self.pixel_delta_u +
+                (j[..., None] + offsets[..., 1:2]) * self.pixel_delta_v
+            )
+
+            
+            if self.defocus_angle <= 0:
+                ray_origins = np.broadcast_to(self.center, pixel_sample.shape)
+            else:
+                ray_origins = self.defocus_disk_sample()
+
+            ray_directions = pixel_sample - ray_origins
+            rays = Ray(ray_origins, ray_directions)
+
+            sample_color = self.ray_color(rays, world, self.max_depth)
+            accumulated_colors += sample_color
         
-        print("Done")
+        final_colors =  accumulated_colors / self.sample_per_pixel
+        final_colors =  np.sqrt(np.maximum(0, final_colors))
+        
+        final_colors = (np.clip(final_colors, 0.0, 0.999) * 255.99).astype(np.uint8)
+
+        return final_colors
 
     def initialize(self):
 
@@ -65,13 +77,13 @@ class Camera:
         # Determine viewport dimensions
         #focal_length = (self.lookfrom - self.lookat).length()
         theta = degrees_to_radians(self.vfov)
-        h = tan(theta/2.0)
+        h = np.tan(theta/2.0)
         viewport_height = 2.0 * h * self.focus_dist
         viewport_width = viewport_height * (self.image_width / self.image_height)
 
         # Calculate the u,v,w unit basis vectors for the camera coordinate frame
-        w = unit_vector(self.lookfrom - self.lookat)
-        u = unit_vector(cross(self.view_up, w))
+        w = normalise(self.lookfrom - self.lookat)
+        u = normalise(cross(self.view_up, w))
         v = cross(w, u)
 
         # Calculate the vectors across the horizontal and down the vertical viewport edges.
@@ -86,46 +98,66 @@ class Camera:
         viewport_upper_left = self.center - (self.focus_dist * w) - viewport_u/2 - viewport_v/2
         self.pixel00_loc = viewport_upper_left + 0.5 * (self.pixel_delta_u + self.pixel_delta_v)
 
-        defocus_radius = self.focus_dist * tan(degrees_to_radians(self.defocus_angle / 2))
+        defocus_radius = self.focus_dist * np.tan(degrees_to_radians(self.defocus_angle / 2))
         self.defocus_disk_u = u * defocus_radius
         self.defocus_disk_v = v * defocus_radius
 
-    @staticmethod
-    def ray_color(r:Ray, depth:int, world:Hittable):
-
-        if depth <= 0:
-            return color(0, 0, 0)
-
-        hit, rec = world.hit(r, Interval(0.001, inf))
-        if hit == True and rec is not None:
-            #direction = random_on_hemisphere(rec.normal)
-
-            did_scatter, attenuation, scattered = rec.material.scatter(r, rec)
-            if did_scatter:
-                c = attenuation * Camera.ray_color(scattered, depth-1, world)
-                #print(type(c.x), type(c))
-                return c
-
-            return color(0, 0, 0)
-
-        unit_direction:Vec3 = unit_vector(r.direction)
-        a = 0.5 * (unit_direction.y + 1.0)
-        return (1.0-a)*color(1.0, 1.0, 1.0) + a*color(0.5, 0.7, 1.0)
     
-    def get_ray(self, i:int, j:int):
-        
-        offset = self.sample_square()
-        pixel_sample = self.pixel00_loc + ((i + offset.x) * self.pixel_delta_u) + ((j + offset.y) * self.pixel_delta_v)
+    def ray_color(self, rays, world, depth) -> np.ndarray:
+        attenuation = np.ones((self.image_height, self.image_width, 3), dtype=np.float32)
+        final_color = np.zeros((self.image_height, self.image_width, 3), dtype=np.float32)
+        active_mask = np.ones((self.image_height, self.image_width), dtype=bool)
 
-        ray_origin = self.center if (self.defocus_angle <= 0) else self.defocus_disk_sample()
-        ray_direction = pixel_sample - ray_origin
+        for bounce in range(depth):
+            hit_mask, t_values, obj_indices = world.hit(rays, 0.001, np.inf)
 
-        return Ray(ray_origin, ray_direction)
+            miss_mask = active_mask & ~hit_mask
+            if np.any(miss_mask):
+                unit_dirs = rays.direction / np.linalg.norm(rays.direction, axis=-1, keepdims=True)
+                a = 0.5 * (unit_dirs[..., 1] + 1.0)
+                sky_color = (1.0 - a)[..., None] * np.array([1.0, 1.0, 1.0]) + a[..., None] * np.array([0.5, 0.7, 1.0])
+
+                final_color[miss_mask] += attenuation[miss_mask] * sky_color[miss_mask]
+                active_mask[miss_mask] = False
+
+            if not np.any(active_mask):
+                break
+
+            points, normals, front_faces = world.get_world_record(rays, hit_mask, t_values, obj_indices)
+
+            for idx, obj in enumerate(world.objects):
+                mat_mask = hit_mask & (obj_indices == idx)
+
+                if np.any(mat_mask):
+                    new_dirs, mat_albedo = obj.mat.scatter_batch(
+                        rays, points, normals, front_faces, mat_mask
+                    )
+
+                    rays.origin[mat_mask] = points[mat_mask]
+                    rays.direction[mat_mask] = new_dirs
+                    attenuation[mat_mask] *= mat_albedo
+
+        return final_color
 
     @staticmethod
     def sample_square():
-        return Vec3(random_double() - 0.5, random_double() - 0.5, 0)
+        return np.array([random_double() - 0.5, random_double() - 0.5, 0], dtype=np.float32)
     
     def defocus_disk_sample(self):
-        p = random_in_unit_disk()
-        return self.center + (p.x * self.defocus_disk_u) + (p.y * self.defocus_disk_v)
+        shape = (self.image_height, self.image_width)
+        p = random_unit_disk_vectorized(shape)
+
+        offsets = (p[..., 0:1] * self.defocus_disk_u) + (p[..., 1:2] * self.defocus_disk_v)
+        return self.center + offsets
+
+def random_unit_disk_vectorized(shape):
+    """Returns an array of shape (*shape, 3) with random poitns in a unit disk."""
+
+    r = np.sqrt(np.random.uniform(0, 1, shape))
+    theta = np.random.uniform(0, 2 * np.pi, shape)
+
+    x = r * np.cos(theta)
+    y = r * np.sin(theta)
+    z = np.zeros_like(x)
+
+    return np.stack([x, y, z], axis=-1)

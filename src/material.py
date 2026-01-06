@@ -1,87 +1,91 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
-from math import sqrt
 
-from hittable import HitRecord
-from ray import Ray
-from vec3 import Vec3, random_unit_vector, reflect, refract ,unit_vector, dot
+import numpy as np
 
-if TYPE_CHECKING:
-    from hittable import HitRecord
-
-color = Vec3
+from utility import random_unit_vector_batch
 
 class Material(ABC):
-
     @abstractmethod
-    def scatter(self, ray_in:Ray, rec:HitRecord) -> tuple[bool, color, Ray]:
+    def scatter_batch(self, rays_in, points, normals, front_faces, mask) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Returns:
+            (scattered_rays, attenuation_mask)
+        """
         pass
 
 class Lambertian(Material):
 
-    def __init__(self, albedo:color) -> None:
+    def __init__(self, albedo:np.ndarray) -> None:
         self.albedo = albedo
 
-    def scatter(self, ray_in: Ray, rec: HitRecord) -> tuple[bool, Vec3, Ray]:
-        
-        scatter_direction = rec.normal + random_unit_vector()
+    def scatter_batch(self, rays_in, points, normals, front_faces, mask):
 
-        if scatter_direction.near_zero():
-            scatter_direction = rec.normal
+        num_hits = np.count_nonzero(mask)
 
-        scattered = Ray(rec.p, scatter_direction)
-        attenuation = self.albedo
-        
-        return (True, attenuation, scattered)
+        rand_vecs = random_unit_vector_batch(num_hits)
+
+        scatter_directions = normals[mask] + rand_vecs
+
+        is_zero = np.linalg.norm(scatter_directions, axis=-1) < 1e-8
+        scatter_directions[is_zero] = normals[mask][is_zero]
+
+        return scatter_directions, self.albedo
 
 class Metal(Material):
 
-    def __init__(self, albedo:color, fuzz:float) -> None:
+    def __init__(self, albedo:np.ndarray, fuzz:float) -> None:
         self.albedo = albedo
         self.fuzz = fuzz
     
-    def scatter(self, ray_in: Ray, rec: HitRecord) -> tuple[bool, Vec3, Ray]:
+    def scatter_batch(self, rays_in, points, normals, front_faces, mask) -> tuple[np.ndarray, np.ndarray]:
+        num_hits = np.count_nonzero(mask)
+
+        v = rays_in.direction[mask]
+        n = normals[mask]
+
+        dot_product = np.sum(v * n, axis=-1, keepdims=True)
+        reflected = v - 2 * dot_product * n
+
+        if self.fuzz > 0:
+            reflected  += self.fuzz  * random_unit_vector_batch(num_hits)
         
-        reflected = reflect(ray_in.direction, rec.normal)
-        reflected = unit_vector(reflected) + (self.fuzz * random_unit_vector())
-        
-        scattered = Ray(rec.p, reflected)
-        attenuation = self.albedo
-        did_scatter = dot(scattered.direction, rec.normal) > 0
-        return (did_scatter, attenuation, scattered)
+        return reflected, self.albedo
 
 class Dielectric(Material):
-
-    def __init__(self, refraction_index:float) -> None:
+    def __init__(self, refraction_index: float) -> None:
         self.refraction_index = refraction_index
-    
-    def scatter(self, ray_in: Ray, rec: HitRecord) -> tuple[bool, Vec3, Ray]:
+
+    def scatter_batch(self, rays_in, points, normals, front_faces, mask):
+        # Use front_faces to decide the refraction ratio
+        ri = np.where(front_faces[mask], (1.0 / self.refraction_index), self.refraction_index)
         
-        attenuation = color(1.0, 1.0, 1.0)
-        ri = (1.0 / self.refraction_index) if rec.front_face else self.refraction_index
+        unit_dirs = rays_in.direction[mask] / np.linalg.norm(rays_in.direction[mask], axis=-1, keepdims=True)
+        n = normals[mask]
+        
+        cos_theta = np.minimum(np.sum(-unit_dirs * n, axis=-1), 1.0)
+        sin_theta = np.sqrt(np.maximum(0, 1.0 - cos_theta**2))
 
-        unit_direction:Vec3 = unit_vector(ray_in.direction)
+        # Reflect or Refract?
+        cannot_refract = (ri * sin_theta) > 1.0
+        reflectance = self.reflectance_batch(cos_theta, ri)
+        num_hits = np.count_nonzero(mask)
+        do_reflect = cannot_refract | (reflectance > np.random.uniform(0, 1, num_hits))
+        
+        # Reflection
+        res_reflected = unit_dirs - 2 * np.sum(unit_dirs * n, axis=-1, keepdims=True) * n
+        
+        # Refraction
+        perp = ri[..., np.newaxis] * (unit_dirs + cos_theta[..., np.newaxis] * n)
+        parallel = -np.sqrt(np.abs(1.0 - np.sum(perp**2, axis=-1, keepdims=True))) * n
+        res_refracted = perp + parallel
+        
+        # Choose path based on the mask
+        final_dirs = np.where(do_reflect[..., np.newaxis], res_reflected, res_refracted)
+        
+        return final_dirs, np.array([1.0, 1.0, 1.0], dtype=np.float32)
 
-        cos_theta = min(dot(-unit_direction, rec.normal), 1.0)
-        sin_theta = sqrt(1 - cos_theta * cos_theta)
-
-        # According to Snell's law
-        cannot_refract = ri * sin_theta > 1.0
-        direction:Vec3 = Vec3(0, 0, 0)
-        if cannot_refract:
-            # MUST REFLECT
-            direction = reflect(unit_direction, rec.normal)
-        else:
-            # CAN REFRACT
-            direction = refract(unit_direction, rec.normal, ri)
-
-        scattered = Ray(rec.p, direction)
-        return (True, attenuation, scattered)
-    
-    # Using Schlick's approximation for reflectance
     @staticmethod
-    def reflectance(cosine:float, refraction_index:float):
-        r0 = (1 - refraction_index) / (1 + refraction_index)
-        r0 = r0 * r0
-        return r0 + (1 - r0)*pow((1-cosine), 5)
+    def reflectance_batch(cosine, ref_idx):
+        r0 = ((1 - ref_idx) / (1 + ref_idx))**2
+        return r0 + (1 - r0) * (1 - cosine)**5

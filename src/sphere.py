@@ -1,45 +1,48 @@
 from __future__ import annotations
-from math import sqrt
-from interval import Interval
 
-from hittable import HitRecord, Hittable
-from ray import Ray
-from vec3 import Vec3, dot
-from typing import TYPE_CHECKING
+import numpy as np
 
-if TYPE_CHECKING:
-    from material import Material
-
-Point3 = Vec3
+from hittable import Hittable
+from material import Material
 
 class Sphere(Hittable):
 
-    def __init__(self, center:Point3, radius:float, mat:Material) -> None:
+    def __init__(self, center:np.ndarray, radius:float, mat:Material) -> None:
 
         self.center = center
         self.radius = radius
         self.mat = mat
     
-    def hit(self, r: Ray, ray_t:Interval) -> tuple[bool, HitRecord | None]:
-        oc = self.center - r.origin 
-        a = r.direction.length_squared()
-        h = dot(r.direction, oc)
-        c = oc.length_squared() - (self.radius * self.radius)
-
-        discrimant = h*h - (a*c)
-        if discrimant < 0:
-            return (False, None)
+    def hit(self, rays, t_min:float, t_max:float):
         
-        sqrtd = sqrt(discrimant)
+        oc = rays.origin - self.center
 
-        # Finding the nearest root in the required range
-        root = (h - sqrtd) / a
-        if not (ray_t.surrounds(root)):
-            root = (h + sqrtd) / a
-            if not (ray_t.surrounds(root)):
-                return (False, None)
+        a = np.sum(rays.direction**2, axis=-1)
+        h = np.sum(oc*rays.direction, axis=-1)
+        c = np.sum(oc*oc, axis=-1) - (self.radius**2)
+
+        discriminant = h**2 - a*c
+
+        hit_mask = discriminant > 0
+        sqrt_d = np.sqrt(np.maximum(0, discriminant))
+
+        root = (-h - sqrt_d)/a
+        hit_mask = hit_mask & (root > t_min) & (root < t_max)
+        t_values = np.where(hit_mask, root, np.inf)
+
+        obj_ids = np.where(hit_mask, 0, -1)
         
-        record:HitRecord = HitRecord(r.at(root), (r.at(root) - self.center) / self.radius, root, False, self.mat)
-        record.set_face_normal(r, (record.p - self.center) / self.radius)
+        return hit_mask, t_values, obj_ids
+    
+    def get_record(self, rays, t_values, hitmask):
 
-        return True, record
+        points = rays.origin[hitmask] + t_values[hitmask, np.newaxis] * rays.direction[hitmask]
+
+        outward_normals = (points - self.center) / self.radius
+
+        direction = rays.direction[hitmask]
+        front_faces = np.sum(direction * outward_normals, axis=1) < 0
+
+        normals = np.where(front_faces[..., np.newaxis], outward_normals, -outward_normals)
+
+        return points, normals, front_faces 
