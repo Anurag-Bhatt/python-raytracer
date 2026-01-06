@@ -23,7 +23,7 @@ class HittableList(Hittable):
 
         for idx, obj in enumerate(self.objects):
 
-            hit_mask, t_values, obj_idx = obj.hit(rays, t_min, t_max)
+            hit_mask, t_values, obj_idx = obj.hit(rays, t_min, closest_t)
 
             is_closer = hit_mask & (t_values < closest_t)
 
@@ -41,6 +41,7 @@ class HittableList(Hittable):
         front_face = np.zeros(hit_mask.shape, dtype=bool)
 
         for idx, obj in enumerate(self.objects):
+
             relevant_mask =  hit_mask & (obj_indices == idx)
 
             if np.any(relevant_mask):

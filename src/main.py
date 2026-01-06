@@ -1,3 +1,4 @@
+import cProfile, pstats, re
 from PIL import Image
 
 import numpy as np
@@ -74,6 +75,18 @@ def main():
 
     im.show()
 
-    im.save("images/test_render_4.png")
+    im.save("images/test_render_5.png")
 
-main()
+if __name__ == '__main__':
+    
+    profiler = cProfile.Profile()
+    profiler.enable()
+
+    main()
+
+    profiler.disable()
+
+    stats = pstats.Stats(profiler)
+    stats.strip_dirs()
+    stats.sort_stats(pstats.SortKey.CUMULATIVE)
+    stats.dump_stats("data.prof")
